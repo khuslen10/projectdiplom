@@ -1,5 +1,6 @@
 const Attendance = require('../models/Attendance');
 const Changelog = require('../models/Changelog');
+const db = require('../config/db'); // Assuming your db connection is exported from here
 require('dotenv').config();
 
 // Хоёр цэгийн хоорондох зайг Хаверсины томьёогоор тооцоолох
@@ -19,7 +20,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 // Ирц бүртгэх
 exports.checkIn = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, isRemote } = req.body;
     const userId = req.user.id;
     
     // Өнөөдөр аль хэдийн ирц бүртгүүлсэн эсэхийг шалгах
@@ -32,36 +33,47 @@ exports.checkIn = async (req, res) => {
       });
     }
     
-    // Байршлыг баталгаажуулах
-    const officeLat = parseFloat(process.env.OFFICE_LAT);
-    const officeLng = parseFloat(process.env.OFFICE_LNG);
-    const allowedRadius = parseFloat(process.env.ALLOWED_RADIUS);
+    // Is this a remote check-in?
+    const isRemoteCheckIn = isRemote === true || isRemote === 'true';
     
-    const distance = calculateDistance(latitude, longitude, officeLat, officeLng);
-    
-    if (distance > allowedRadius) {
-      return res.status(400).json({ 
-        message: `Та оффисын байршлаас хэт хол байна (${Math.round(distance)}м). Зөвшөөрөгдөх зай: ${allowedRadius}м`,
-        distance: Math.round(distance),
-        allowedRadius
-      });
+    // For in-office check-ins, verify location
+    if (!isRemoteCheckIn) {
+      // Байршлыг баталгаажуулах
+      const officeLat = parseFloat(process.env.OFFICE_LAT);
+      const officeLng = parseFloat(process.env.OFFICE_LNG);
+      const allowedRadius = parseFloat(process.env.ALLOWED_RADIUS);
+      
+      const distance = calculateDistance(latitude, longitude, officeLat, officeLng);
+      
+      if (distance > allowedRadius) {
+        return res.status(400).json({ 
+          message: `Та оффисын байршлаас хэт хол байна (${Math.round(distance)}м). Зөвшөөрөгдөх зай: ${allowedRadius}м. Хэрэв та зайнаас ажиллаж байгаа бол "Зайнаас ирц бүртгэх" сонголтыг идэвхжүүлнэ үү.`,
+          distance: Math.round(distance),
+          allowedRadius
+        });
+      }
     }
     
     const locationString = `${latitude},${longitude}`;
-    const attendanceId = await Attendance.checkIn(userId, locationString);
+    const attendanceId = await Attendance.checkIn(userId, locationString, isRemoteCheckIn);
     
     // Өөрчлөлтийн түүхэнд бүртгэх
     await Changelog.create({
-      title: 'Ирц бүртгэл',
-      description: `${req.user.name} ирц бүртгүүллээ`,
+      title: isRemoteCheckIn ? 'Зайнаас ирц бүртгэл' : 'Ирц бүртгэл',
+      description: `${req.user.name} ${isRemoteCheckIn ? 'зайнаас' : ''} ирц бүртгүүллээ`,
       type: 'update',
       created_by: userId
     });
     
+    const message = isRemoteCheckIn 
+      ? 'Зайнаас ирц бүртгэл амжилттай хийгдлээ. Менежерийн зөвшөөрөл хүлээгдэж байна.'
+      : 'Ирцийн бүртгэл амжилттай хийгдлээ';
+    
     res.status(201).json({
-      message: 'Ирцийн бүртгэл амжилттай хийгдлээ',
+      message,
       attendanceId,
-      checkInTime: new Date()
+      checkInTime: new Date(),
+      requiresApproval: isRemoteCheckIn
     });
   } catch (error) {
     console.error('Ирцийн бүртгэлийн алдаа:', error);
@@ -72,27 +84,33 @@ exports.checkIn = async (req, res) => {
 // Гарах бүртгэл
 exports.checkOut = async (req, res) => {
   try {
-    const { latitude, longitude, attendanceId } = req.body;
+    const { latitude, longitude, attendanceId, isRemote } = req.body;
     const userId = req.user.id;
     
-    // Байршлыг баталгаажуулах
-    const officeLat = parseFloat(process.env.OFFICE_LAT);
-    const officeLng = parseFloat(process.env.OFFICE_LNG);
-    const allowedRadius = parseFloat(process.env.ALLOWED_RADIUS);
+    // Is this a remote check-out?
+    const isRemoteCheckOut = isRemote === true || isRemote === 'true';
     
-    const distance = calculateDistance(latitude, longitude, officeLat, officeLng);
-    
-    if (distance > allowedRadius) {
-      return res.status(400).json({ 
-        message: `Та оффисын байршлаас хэт хол байна (${Math.round(distance)}м). Зөвшөөрөгдөх зай: ${allowedRadius}м`,
-        distance: Math.round(distance),
-        allowedRadius
-      });
+    // For in-office check-outs, verify location
+    if (!isRemoteCheckOut) {
+      // Байршлыг баталгаажуулах
+      const officeLat = parseFloat(process.env.OFFICE_LAT);
+      const officeLng = parseFloat(process.env.OFFICE_LNG);
+      const allowedRadius = parseFloat(process.env.ALLOWED_RADIUS);
+      
+      const distance = calculateDistance(latitude, longitude, officeLat, officeLng);
+      
+      if (distance > allowedRadius) {
+        return res.status(400).json({ 
+          message: `Та оффисын байршлаас хэт хол байна (${Math.round(distance)}м). Зөвшөөрөгдөх зай: ${allowedRadius}м. Хэрэв та зайнаас ажиллаж байгаа бол "Зайнаас гарах бүртгэл" сонголтыг идэвхжүүлнэ үү.`,
+          distance: Math.round(distance),
+          allowedRadius
+        });
+      }
     }
     
     // Гарах бүртгэл хийх
     const locationString = `${latitude},${longitude}`;
-    const updated = await Attendance.checkOut(attendanceId, userId, locationString);
+    const updated = await Attendance.checkOut(attendanceId, userId, locationString, isRemoteCheckOut);
     
     if (!updated) {
       return res.status(400).json({ message: 'Гарах бүртгэл хийгдсэнгүй. Ирц бүртгэл олдсонгүй эсвэл аль хэдийн гарсан байна' });
@@ -100,8 +118,8 @@ exports.checkOut = async (req, res) => {
     
     // Өөрчлөлтийн түүхэнд бүртгэх
     await Changelog.create({
-      title: 'Гарах бүртгэл',
-      description: `${req.user.name} гарах бүртгэл хийлээ`,
+      title: isRemoteCheckOut ? 'Зайнаас гарах бүртгэл' : 'Гарах бүртгэл',
+      description: `${req.user.name} ${isRemoteCheckOut ? 'зайнаас' : ''} гарах бүртгэл хийлээ`,
       type: 'update',
       created_by: userId
     });
@@ -112,6 +130,73 @@ exports.checkOut = async (req, res) => {
     });
   } catch (error) {
     console.error('Check-out error:', error);
+    res.status(500).json({ message: 'Серверийн алдаа', error: error.message });
+  }
+};
+
+// Get pending approval attendance records (Manager/Admin only)
+exports.getPendingApprovals = async (req, res) => {
+  try {
+    const pendingApprovals = await Attendance.getPendingApprovals();
+    res.json(pendingApprovals);
+  } catch (error) {
+    console.error('Get pending approvals error:', error);
+    res.status(500).json({ message: 'Серверийн алдаа', error: error.message });
+  }
+};
+
+// Approve or reject an attendance record (Manager/Admin only)
+exports.approveAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes } = req.body;
+    const managerId = req.user.id;
+    
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action. Must be "approved" or "rejected"' });
+    }
+    
+    const updated = await Attendance.updateApprovalStatus(id, action, managerId);
+    
+    if (!updated) {
+      return res.status(400).json({ message: 'Ирцийн мэдээлэл шинэчлэгдсэнгүй' });
+    }
+    
+    // Add notes if provided
+    if (notes) {
+      await Attendance.updateStatus(id, action === 'approved' ? 'present' : 'absent', notes);
+    }
+    
+    // Өөрчлөлтийн түүхэнд бүртгэх
+    await Changelog.create({
+      title: `Ирцийн ${action === 'approved' ? 'зөвшөөрөл' : 'татгалзал'}`,
+      description: `${req.user.name} ирцийн бүртгэл #${id}-г ${action === 'approved' ? 'зөвшөөрсөн' : 'татгалзсан'}`,
+      type: 'update',
+      created_by: managerId
+    });
+    
+    res.json({ 
+      message: `Ирцийн бүртгэл амжилттай ${action === 'approved' ? 'зөвшөөрөгдлөө' : 'татгалзагдлаа'}` 
+    });
+  } catch (error) {
+    console.error('Approve attendance error:', error);
+    res.status(500).json({ message: 'Серверийн алдаа', error: error.message });
+  }
+};
+
+// Get all pending approvals for the current user
+exports.getUserPendingApprovals = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [rows] = await db.query(
+      `SELECT * FROM attendance 
+       WHERE user_id = ? AND approval_status = 'pending'
+       ORDER BY check_in DESC`,
+      [userId]
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Get user pending approvals error:', error);
     res.status(500).json({ message: 'Серверийн алдаа', error: error.message });
   }
 };
@@ -210,46 +295,103 @@ exports.getOfficeLocation = async (req, res) => {
 // Оффисын байршлын тохиргоог шинэчлэх (Зөвхөн Админ)
 exports.updateOfficeLocation = async (req, res) => {
   try {
+    // Validate the input data
     const { latitude, longitude, allowedRadius } = req.body;
     
-    // .env файлыг шинэчлэх функц
-    const fs = require('fs');
-    const path = require('path');
-    const envPath = path.resolve(__dirname, '../.env');
+    if (latitude === undefined || longitude === undefined || allowedRadius === undefined) {
+      return res.status(400).json({ 
+        message: 'Бүх шаардлагатай мэдээллийг оруулна уу' 
+      });
+    }
+
+    // Ensure all values are numeric
+    const numLatitude = Number(latitude);
+    const numLongitude = Number(longitude);
+    const numAllowedRadius = Number(allowedRadius);
+
+    if (isNaN(numLatitude) || isNaN(numLongitude) || isNaN(numAllowedRadius)) {
+      return res.status(400).json({ 
+        message: 'Тоон утга шаардана' 
+      });
+    }
+
+    if (numAllowedRadius <= 0) {
+      return res.status(400).json({ 
+        message: 'Зөвшөөрөгдөх радиус нь 0-ээс их байх ёстой'        
+      });
+    }
     
-    // .env файлын агуулгыг унших
-    let envContent = fs.readFileSync(envPath, 'utf8');
-    
-    // Байршлын тохиргоог шинэчлэх
-    envContent = envContent.replace(/OFFICE_LAT=.*/g, `OFFICE_LAT=${latitude}`);
-    envContent = envContent.replace(/OFFICE_LNG=.*/g, `OFFICE_LNG=${longitude}`);
-    envContent = envContent.replace(/ALLOWED_RADIUS=.*/g, `ALLOWED_RADIUS=${allowedRadius}`);
-    
-    // Шинэчилсэн агуулгыг бичих
-    fs.writeFileSync(envPath, envContent);
-    
-    // process.env-д шинэчлэх
-    process.env.OFFICE_LAT = latitude.toString();
-    process.env.OFFICE_LNG = longitude.toString();
-    process.env.ALLOWED_RADIUS = allowedRadius.toString();
-    
-    // Өөрчлөлтийн түүхэнд бүртгэх
-    await Changelog.create({
-      title: 'Оффисын байршил шинэчлэгдсэн',
-      description: `Оффисын байршил шинэчлэгдлээ: ${latitude}, ${longitude} (${allowedRadius}м радиус)`,
-      type: 'update',
-      created_by: req.user.id
-    });
-    
-    res.json({ 
-      message: 'Оффисын байршил амжилттай шинэчлэгдлээ',
-      latitude,
-      longitude,
-      allowedRadius
-    });
+    try {
+      // .env файлыг шинэчлэх функц
+      const fs = require('fs');
+      const path = require('path');
+      const envPath = path.resolve(__dirname, '../.env');
+      
+      // Check if .env file exists
+      if (!fs.existsSync(envPath)) {
+        console.error('.env file not found at path:', envPath);
+        return res.status(500).json({ 
+          message: 'Серверийн тохиргооны файл олдсонгүй' 
+        });
+      }
+      
+      // .env файлын агуулгыг унших
+      let envContent = fs.readFileSync(envPath, 'utf8');
+      
+      // Check if env variables exist, add them if they don't
+      if (!envContent.includes('OFFICE_LAT=')) {
+        envContent += `\nOFFICE_LAT=${numLatitude}`;
+      } else {
+        envContent = envContent.replace(/OFFICE_LAT=.*/g, `OFFICE_LAT=${numLatitude}`);
+      }
+      
+      if (!envContent.includes('OFFICE_LNG=')) {
+        envContent += `\nOFFICE_LNG=${numLongitude}`;
+      } else {
+        envContent = envContent.replace(/OFFICE_LNG=.*/g, `OFFICE_LNG=${numLongitude}`);
+      }
+      
+      if (!envContent.includes('ALLOWED_RADIUS=')) {
+        envContent += `\nALLOWED_RADIUS=${numAllowedRadius}`;
+      } else {
+        envContent = envContent.replace(/ALLOWED_RADIUS=.*/g, `ALLOWED_RADIUS=${numAllowedRadius}`);
+      }
+      
+      // Шинэчилсэн агуулгыг бичих
+      fs.writeFileSync(envPath, envContent);
+      
+      // process.env-д шинэчлэх
+      process.env.OFFICE_LAT = numLatitude.toString();
+      process.env.OFFICE_LNG = numLongitude.toString();
+      process.env.ALLOWED_RADIUS = numAllowedRadius.toString();
+      
+      // Өөрчлөлтийн түүхэнд бүртгэх
+      await Changelog.create({
+        title: 'Оффисын байршил шинэчлэгдсэн',
+        description: `Оффисын байршил шинэчлэгдлээ: ${numLatitude}, ${numLongitude} (${numAllowedRadius}м радиус)`,
+        type: 'update',
+        created_by: req.user.id
+      });
+      
+      return res.json({ 
+        message: 'Оффисын байршил амжилттай шинэчлэгдлээ',
+        latitude: numLatitude,
+        longitude: numLongitude,
+        allowedRadius: numAllowedRadius
+      });
+    } catch (fsError) {
+      console.error('File system error:', fsError);
+      return res.status(500).json({ 
+        message: 'Файл шинэчлэх үед алдаа гарлаа', 
+        error: fsError.message 
+      });
+    }
   } catch (error) {
     console.error('Update office location error:', error);
-    res.status(500).json({ message: 'Серверийн алдаа', error: error.message });
+    return res.status(500).json({ 
+      message: 'Серверийн алдаа', 
+      error: error.message 
+    });
   }
 };
 

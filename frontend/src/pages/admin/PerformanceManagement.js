@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, 
-  TableHead, TableRow, Button, Alert, CircularProgress, Grid,
+  Box, Typography, Paper, Button, Alert, CircularProgress,
   Dialog, DialogActions, DialogContent, DialogTitle, TextField, 
-  MenuItem, IconButton, Chip, TablePagination, InputAdornment,
-  Tooltip, FormControl, InputLabel, Select, Rating
+  InputAdornment, IconButton, FormControl, InputLabel, Select, MenuItem,
+  TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
+  TablePagination, Grid, Chip, Tooltip, Rating
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
+  Search as SearchIcon,
   Visibility as ViewIcon,
-  Search as SearchIcon
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
+
+// Import our custom components
+import PerformanceTable from '../../components/performance/PerformanceTable';
+import PerformanceForm from '../../components/performance/PerformanceForm';
+import PerformanceView from '../../components/performance/PerformanceView';
+import PerformanceRating from '../../components/performance/PerformanceRating';
+import ControlledRating from '../../components/performance/ControlledRating';
 
 const PerformanceManagement = () => {
   const { user } = useAuth();
@@ -156,7 +163,7 @@ const PerformanceManagement = () => {
     setFormData({
       user_id: review.user_id,
       review_period: review.review_period,
-      performance_score: review.performance_score,
+      performance_score: review.rating || review.performance_score || 0,
       strengths: review.strengths || '',
       areas_to_improve: review.areas_to_improve || '',
       goals: review.goals || '',
@@ -187,7 +194,7 @@ const PerformanceManagement = () => {
   
   // Handle rating change
   const handleRatingChange = (newValue) => {
-    setFormData({ ...formData, performance_score: newValue });
+    setFormData({ ...formData, performance_score: newValue || 0 });
   };
   
   // Submit add review form
@@ -426,12 +433,13 @@ const PerformanceManagement = () => {
                     <TableCell>{review.department || '-'}</TableCell>
                     <TableCell>{review.review_period}</TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Rating value={review.performance_score} readOnly precision={1} />
-                        <Typography variant="body2" sx={{ ml: 1 }}>
-                          ({getScoreLabel(review.performance_score)})
-                        </Typography>
-                      </Box>
+                      <PerformanceRating
+                        value={review.rating || review.performance_score || 0}
+                        readOnly={true}
+                        getScoreLabel={(score) => getScoreLabel(score)}
+                        size="small"
+                        showLabel={true}
+                      />
                     </TableCell>
                     <TableCell>{formatDate(review.created_at)}</TableCell>
                     <TableCell>
@@ -757,9 +765,9 @@ const PerformanceManagement = () => {
                 <Grid item xs={12}>
                   <Typography variant="subtitle2">Гүйцэтгэлийн үнэлгээ:</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Rating value={selectedReview.performance_score} readOnly precision={1} />
+                    <Rating value={selectedReview.rating || selectedReview.performance_score || 0} readOnly precision={1} />
                     <Typography variant="body1" sx={{ ml: 1 }}>
-                      ({getScoreLabel(selectedReview.performance_score)})
+                      ({getScoreLabel(selectedReview.rating || selectedReview.performance_score || 0)})
                     </Typography>
                   </Box>
                 </Grid>

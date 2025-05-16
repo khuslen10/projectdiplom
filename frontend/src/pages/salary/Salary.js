@@ -116,18 +116,24 @@ const Salary = () => {
   
   // Format currency
   const formatCurrency = (amount) => {
-    if (amount === undefined || amount === null) return '0 ₮';
+    // Handle null, undefined, or NaN values
+    if (amount === null || amount === undefined || isNaN(parseFloat(amount))) {
+      return '0 ₮';
+    }
     return new Intl.NumberFormat('mn-MN', { 
       style: 'currency', 
       currency: 'MNT',
       maximumFractionDigits: 0
-    }).format(amount);
+    }).format(parseFloat(amount));
   };
   
   // Calculate net salary
   const calculateNetSalary = (salary) => {
     if (!salary) return 0;
-    return salary.base_salary + (salary.bonus || 0) - (salary.deductions || 0);
+    const baseSalary = parseFloat(salary.base_salary) || 0;
+    const bonus = parseFloat(salary.bonus) || 0;
+    const deductions = parseFloat(salary.deductions) || 0;
+    return baseSalary + bonus - deductions;
   };
   
   // Handle pagination

@@ -3,7 +3,8 @@ import axios from 'axios';
 import { 
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Button, Alert, CircularProgress, Grid,
-  FormControl, InputLabel, MenuItem, Select, TextField, Rating, Chip
+  FormControl, InputLabel, MenuItem, Select, TextField, Rating, Chip,
+  FormControlLabel, Checkbox
 } from '@mui/material';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -21,6 +22,7 @@ const PerformanceReport = () => {
   // Filter states
   const [year, setYear] = useState(new Date().getFullYear());
   const [department, setDepartment] = useState('');
+  const [hideUnratedEmployees, setHideUnratedEmployees] = useState(false);
   
   const departments = [
     { value: '', label: 'Бүх хэлтэс' },
@@ -36,6 +38,14 @@ const PerformanceReport = () => {
   
   const handleDepartmentChange = (event) => {
     setDepartment(event.target.value);
+  };
+  
+  const handleHideUnratedChange = (event) => {
+    setHideUnratedEmployees(event.target.checked);
+    // Force re-render by setting a new report object with the same data
+    if (report) {
+      setReport({...report});
+    }
   };
   
   const generateReport = async () => {
@@ -98,19 +108,22 @@ const PerformanceReport = () => {
     // Add filters info with ASCII characters
     doc.setFontSize(10);
     doc.text(`Department: ${department ? transliterate(department) : 'All departments'}`, 14, 25);
-    doc.text(`Total employees: ${report.total_employees}`, 14, 30);
+    const employeesText = hideUnratedEmployees 
+      ? `Total employees: ${getFilteredReportData().length} (Rated only)` 
+      : `Total employees: ${report.total_employees}`;
+    doc.text(employeesText, 14, 30);
     
     // Create table with simplified column names in English
     const tableColumn = ["Name", "Position", "Department", "Review Count", "Average Rating"];
     const tableRows = [];
     
-    report.report.forEach(item => {
+    getFilteredReportData().forEach(item => {
       const rowData = [
         transliterate(item.name),
         transliterate(item.position),
         transliterate(item.department),
         item.review_count,
-        item.avg_rating
+        item.avg_rating === 'N/A' ? '—' : item.avg_rating
       ];
       tableRows.push(rowData);
     });
@@ -134,14 +147,14 @@ const PerformanceReport = () => {
   const exportToExcel = () => {
     if (!report) return;
     
-    const worksheet = XLSX.utils.json_to_sheet(report.report.map(item => ({
+    const worksheet = XLSX.utils.json_to_sheet(getFilteredReportData().map(item => ({
       'Нэр': item.name,
       'Имэйл': item.email,
       'Албан тушаал': item.position,
       'Хэлтэс': item.department,
       'Үнэлгээний тоо': item.review_count,
-      'Дундаж үнэлгээ': item.avg_rating,
-      'Сүүлийн үнэлгээний огноо': item.latest_review ? new Date(item.latest_review.created_at).toLocaleDateString('mn-MN') : 'Байхгүй'
+      'Дундаж үнэлгээ': item.avg_rating === 'N/A' ? 'Үнэлгээгүй' : item.avg_rating,
+      'Сүүлийн үнэлгээний огноо': item.latest_review ? new Date(item.latest_review.created_at).toLocaleDateString('mn-MN') : '—'
     })));
     
     const workbook = XLSX.utils.book_new();
@@ -150,11 +163,20 @@ const PerformanceReport = () => {
     XLSX.writeFile(workbook, `Гүйцэтгэлийн_тайлан_${year}.xlsx`);
   };
   
+  // Get filtered report data
+  const getFilteredReportData = () => {
+    if (!report) return [];
+    
+    return hideUnratedEmployees 
+      ? report.report.filter(item => item.review_count > 0)
+      : report.report;
+  };
+  
   // Prepare chart data
   const getChartData = () => {
     if (!report) return [];
     
-    return report.report
+    return getFilteredReportData()
       .filter(item => item.avg_rating !== 'N/A')
       .map(item => ({
         name: item.name,
@@ -169,7 +191,7 @@ const PerformanceReport = () => {
     // Group by department and calculate average rating
     const departmentData = {};
     
-    report.report.forEach(item => {
+    getFilteredReportData().forEach(item => {
       if (item.avg_rating !== 'N/A') {
         if (!departmentData[item.department]) {
           departmentData[item.department] = {
@@ -246,6 +268,48 @@ const PerformanceReport = () => {
               {loading ? <CircularProgress size={24} /> : 'Тайлан үүсгэх'}
             </Button>
           </Grid>
+          
+          {report && (
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox 
+                    checked={hideUnratedEmployees}
+                    onChange={handleHideUnratedChange}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography 
+                      variant="body1" 
+                      fontWeight={hideUnratedEmployees ? 'bold' : 'normal'}
+                      color={hideUnratedEmployees ? 'primary' : 'inherit'}
+                    >
+                      Үнэлгээгүй ажилтнуудыг харуулахгүй
+                    </Typography>
+                    {hideUnratedEmployees && (
+                      <Chip 
+                        size="small" 
+                        color="primary" 
+                        label={`${report.report.length - getFilteredReportData().length} ажилтан нуугдсан`} 
+                        sx={{ ml: 1 }}
+                      />
+                    )}
+                  </Box>
+                }
+                sx={{ 
+                  py: 1,
+                  px: 2,
+                  mt: 1,
+                  border: hideUnratedEmployees ? '1px solid' : 'none',
+                  borderColor: 'primary.main',
+                  borderRadius: 1,
+                  bgcolor: hideUnratedEmployees ? 'action.hover' : 'transparent'
+                }}
+              />
+            </Grid>
+          )}
         </Grid>
       </Paper>
       
@@ -281,7 +345,9 @@ const PerformanceReport = () => {
               Хугацаа: {report.year} он
             </Typography>
             <Typography variant="body2" gutterBottom>
-              Нийт ажилтан: {report.total_employees}
+              Нийт ажилтан: {hideUnratedEmployees 
+                ? `${getFilteredReportData().length} (Зөвхөн үнэлгээтэй)` 
+                : report.total_employees}
             </Typography>
             
             <Box sx={{ height: 300, mt: 3 }}>
@@ -332,7 +398,7 @@ const PerformanceReport = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {report.report.map((item) => (
+                  {getFilteredReportData().map((item) => (
                     <TableRow key={item.user_id}>
                       <TableCell>{item.name}</TableCell>
                       <TableCell>{item.position}</TableCell>
@@ -372,7 +438,7 @@ const PerformanceReport = () => {
                             </Typography>
                           </Box>
                         ) : (
-                          'Үнэлгээгүй'
+                          <Typography variant="body2" color="text.secondary">—</Typography>
                         )}
                       </TableCell>
                     </TableRow>

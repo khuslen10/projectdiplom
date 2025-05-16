@@ -48,7 +48,21 @@ export const AuthProvider = ({ children }) => {
 
         // Хэрэглэгчийн мэдээллийг ачаалах
         const res = await axios.get('/auth/me');
-        setUser(res.data);
+        const userData = res.data;
+        
+        try {
+          // Хэрэглэгчийн профайл мэдээллийг ачаалах
+          console.log('Getting profile for user ID:', userData.id);
+          const profileRes = await axios.get('/profile/me');
+          console.log('Profile data:', profileRes.data);
+          // Add profile data to user object
+          userData.profile = profileRes.data;
+        } catch (profileErr) {
+          // Continue even if profile fetch fails
+          console.warn('Could not fetch profile:', profileErr.message);
+        }
+        
+        setUser(userData);
         setIsAuthenticated(true);
       } catch (err) {
         console.error('Хэрэглэгчийн мэдээлэл ачааллахад алдаа гарлаа:', err);
@@ -140,17 +154,54 @@ export const AuthProvider = ({ children }) => {
         throw new Error('User information not available');
       }
       
+      // Separate profile data and user data
+      const { profile_picture, ...userBasicData } = userData;
+      
       // Хэрэглэгчийн мэдээллийг шинэчлэх
       const cleanData = Object.fromEntries(
-        Object.entries(userData).filter(([_, v]) => v !== undefined)
+        Object.entries(userBasicData).filter(([_, v]) => v !== undefined)
       );
       
-      const res = await axios.put(`/users/${user.id}`, cleanData);
+      // Update user data through users API
+      let userUpdateResponse = null;
+      if (Object.keys(cleanData).length > 0) {
+        userUpdateResponse = await axios.put(`/users/${user.id}`, cleanData);
+      }
       
-      // Хэрэглэгчийн мэдээллийг шинэчлэх
-      setUser({ ...user, ...cleanData });
+      // Update profile data through profile API
+      const profileData = {
+        first_name: userData.first_name,
+        last_name: userData.last_name, 
+        phone: userData.phone || '',
+        address: userData.address || ''
+      };
       
-      return { success: true, message: res.data.message };
+      let profileUpdateResponse = null;
+      try {
+        profileUpdateResponse = await axios.put('/profile/me', profileData);
+      } catch (profileErr) {
+        console.warn('Profile update error:', profileErr);
+        // Continue even if profile update fails
+      }
+      
+      // Fetch updated user and profile data
+      const updatedUserRes = await axios.get('/auth/me');
+      const updatedUserData = updatedUserRes.data;
+      
+      try {
+        const profileRes = await axios.get('/profile/me');
+        updatedUserData.profile = profileRes.data;
+      } catch (profileErr) {
+        console.warn('Could not fetch updated profile:', profileErr.message);
+      }
+      
+      // Update the user state with fresh data
+      setUser(updatedUserData);
+      
+      return { 
+        success: true, 
+        message: userUpdateResponse?.data?.message || 'Профайл амжилттай шинэчлэгдлээ'
+      };
     } catch (err) {
       console.error('Профайл шинэчлэх алдаа:', err);
       setError(err.response?.data?.message || 'Профайл шинэчлэхэд алдаа гарлаа');

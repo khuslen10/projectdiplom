@@ -142,13 +142,25 @@ const AttendanceManagement = () => {
   
   // Таб, хайлтын үг, огноо болон хэлтсээр бүртгэлүүдийг шүүх
   const filterRecordsByTab = (records, tabIndex) => {
+    if (!records || !Array.isArray(records)) {
+      setFilteredRecords([]);
+      return;
+    }
+    
     let filtered = [...records];
     
     // Хэрэв байхгүй бол бүртгэл бүрт огнооны шинж нэмэх
     filtered = filtered.map(record => {
       if (!record.date && record.check_in) {
-        const checkInDate = new Date(record.check_in);
-        return { ...record, date: checkInDate.toISOString().split('T')[0] };
+        try {
+          const checkInDate = new Date(record.check_in);
+          // Check if valid date before calling toISOString()
+          if (!isNaN(checkInDate.getTime())) {
+            return { ...record, date: checkInDate.toISOString().split('T')[0] };
+          }
+        } catch (err) {
+          console.warn('Invalid date for record:', record);
+        }
       }
       return record;
     });
@@ -165,18 +177,29 @@ const AttendanceManagement = () => {
     // Filter by search term
     if (searchTerm.trim() !== '') {
       filtered = filtered.filter(record => 
-        record.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.user_email.toLowerCase().includes(searchTerm.toLowerCase())
+        (record.user_name && record.user_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (record.user_email && record.user_email.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
     
     // Filter by date
     if (selectedDate) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      filtered = filtered.filter(record => {
-        const recordDate = new Date(record.date).toISOString().split('T')[0];
-        return recordDate === dateStr;
-      });
+      try {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        filtered = filtered.filter(record => {
+          if (!record.date && !record.check_in) return false;
+          
+          try {
+            const recordDate = record.date || 
+              (record.check_in ? new Date(record.check_in).toISOString().split('T')[0] : null);
+            return recordDate === dateStr;
+          } catch (err) {
+            return false;
+          }
+        });
+      } catch (err) {
+        console.warn('Error filtering by date:', err);
+      }
     }
     
     // Filter by department
@@ -432,7 +455,7 @@ const AttendanceManagement = () => {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} md={3}>
             <TextField
               placeholder="Хайх..."
               variant="outlined"
@@ -450,19 +473,23 @@ const AttendanceManagement = () => {
             />
           </Grid>
           
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} md={3}>
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={mnLocale}>
               <DatePicker
                 label="Огноо"
                 value={selectedDate}
                 onChange={handleDateChange}
-                renderInput={(params) => <TextField {...params} size="small" fullWidth />}
-                slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                slotProps={{ 
+                  textField: { 
+                    size: 'small', 
+                    fullWidth: true 
+                  } 
+                }}
               />
             </LocalizationProvider>
           </Grid>
           
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} md={3}>
             <FormControl fullWidth size="small">
               <InputLabel>Хэлтэс</InputLabel>
               <Select
@@ -482,7 +509,7 @@ const AttendanceManagement = () => {
             </FormControl>
           </Grid>
           
-          <Grid item xs={12} sm={3}>
+          <Grid xs={12} md={3}>
             <Button 
               variant="outlined" 
               onClick={handleResetFilters}
@@ -604,44 +631,44 @@ const AttendanceManagement = () => {
           <DialogContent>
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2">Ажилтан:</Typography>
                   <Typography variant="body1">{selectedRecord.user_name}</Typography>
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2">Имэйл:</Typography>
                   <Typography variant="body1">{selectedRecord.user_email}</Typography>
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2">Хэлтэс:</Typography>
                   <Typography variant="body1">{selectedRecord.department || 'Тодорхойгүй'}</Typography>
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2">Огноо:</Typography>
                   <Typography variant="body1">{formatDate(selectedRecord.date)}</Typography>
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2">Ирсэн цаг:</Typography>
                   <Typography variant="body1">{formatTime(selectedRecord.check_in) || 'Бүртгэгдээгүй'}</Typography>
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2">Явсан цаг:</Typography>
                   <Typography variant="body1">{formatTime(selectedRecord.check_out) || 'Бүртгэгдээгүй'}</Typography>
                 </Grid>
                 
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <Typography variant="subtitle2">Тэмдэглэл:</Typography>
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
                     {selectedRecord.notes || 'Тэмдэглэл байхгүй'}
                   </Typography>
                 </Grid>
                 
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <Typography variant="subtitle2">Байршил:</Typography>
                   <Typography variant="body1">
                     {selectedRecord.location ? `${selectedRecord.location.latitude}, ${selectedRecord.location.longitude}` : 'Бүртгэгдээгүй'}
@@ -673,7 +700,7 @@ const AttendanceManagement = () => {
           <DialogContent>
             <Box component="form" sx={{ mt: 2 }}>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     select
                     fullWidth
@@ -690,7 +717,7 @@ const AttendanceManagement = () => {
                   </TextField>
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Ирсэн цаг"
@@ -703,7 +730,7 @@ const AttendanceManagement = () => {
                   />
                 </Grid>
                 
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Явсан цаг"
@@ -716,7 +743,7 @@ const AttendanceManagement = () => {
                   />
                 </Grid>
                 
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="Тэмдэглэл"
@@ -771,7 +798,7 @@ const AttendanceManagement = () => {
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} md={6}>
                 <TextField
                   fullWidth
                   label="Өргөрөг (Latitude)"
@@ -784,7 +811,7 @@ const AttendanceManagement = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} md={6}>
                 <TextField
                   fullWidth
                   label="Уртраг (Longitude)"
@@ -797,7 +824,7 @@ const AttendanceManagement = () => {
                 />
               </Grid>
               
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <TextField
                   fullWidth
                   label="Зөвшөөрөгдөх радиус (метр)"
@@ -806,8 +833,8 @@ const AttendanceManagement = () => {
                   value={officeLocation.allowedRadius}
                   onChange={handleLocationChange}
                   InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: 1, step: 1 }}
-                  helperText="Ажилтнууд энэ радиусын дотор байж ирц бүртгүүлэх боломжтой"
+                  inputProps={{ step: 1, min: 10, max: 1000 }}
+                  helperText="Оффисоос хэр хол зайд ирцийг бүртгэх боломжтой байхыг заана (10-1000 метр)"
                 />
               </Grid>
             </Grid>

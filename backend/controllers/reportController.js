@@ -264,9 +264,9 @@ exports.getSalaryReport = async (req, res) => {
       let userDeductions = 0;
       
       for (const record of salaryRecords) {
-        userBaseSalary += parseFloat(record.base_salary);
-        userBonus += parseFloat(record.bonus);
-        userDeductions += parseFloat(record.deductions);
+        userBaseSalary += parseFloat(record.base_salary) || 0;
+        userBonus += parseFloat(record.bonus) || 0;
+        userDeductions += parseFloat(record.deductions) || 0;
       }
       
       const userNetSalary = userBaseSalary + userBonus - userDeductions;

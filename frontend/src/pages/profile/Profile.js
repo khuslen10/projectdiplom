@@ -78,6 +78,25 @@ const Profile = () => {
       if (user.profile_picture) {
         setPreviewUrl(`http://localhost:5000/uploads/${user.profile_picture}`);
       }
+      
+      // Check if we need to fetch profile data
+      const fetchProfileData = async () => {
+        try {
+          const profileRes = await axios.get('/profile/me');
+          if (profileRes.data && profileRes.data.image_path) {
+            setPreviewUrl(`http://localhost:5000/uploads/${profileRes.data.image_path}`);
+          }
+        } catch (err) {
+          console.warn('Could not fetch profile data:', err.message);
+        }
+      };
+      
+      fetchProfileData();
+      
+      // Also check if we have profile data with image path
+      if (user.profile && user.profile.image_path) {
+        setPreviewUrl(`http://localhost:5000/uploads/${user.profile.image_path}`);
+      }
     }
   }, [user]);
   
@@ -210,16 +229,16 @@ const Profile = () => {
       // First handle profile picture upload if there is one
       if (profilePicture) {
         const pictureFormData = new FormData();
-        pictureFormData.append('profilePicture', profilePicture);
+        pictureFormData.append('image', profilePicture);
         
         try {
-          const uploadRes = await axios.post('/users/profile-picture', pictureFormData, {
+          const uploadRes = await axios.post('/profile/me/image', pictureFormData, {
             headers: {
               'Content-Type': 'multipart/form-data'
             }
           });
           
-          profilePictureFilename = uploadRes.data.profilePicture;
+          profilePictureFilename = uploadRes.data.imagePath;
           console.log('Profile picture uploaded successfully:', profilePictureFilename);
         } catch (uploadErr) {
           console.error('Profile picture upload failed:', uploadErr);
@@ -340,7 +359,8 @@ const Profile = () => {
                       <Grid item xs={12} display="flex" justifyContent="center" mb={2}>
                         <Box sx={{ position: 'relative' }}>
                           <Avatar
-                            src={previewUrl || (user.profile_picture ? `http://localhost:5000/uploads/${user.profile_picture}` : '')}
+                            src={previewUrl || 
+                                 (user.profile?.image_path ? `http://localhost:5000/uploads/${user.profile.image_path}` : '')}
                             alt={user.name}
                             sx={{ width: 120, height: 120, mb: 2 }}
                           />

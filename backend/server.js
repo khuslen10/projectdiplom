@@ -16,6 +16,8 @@ const salaryRoutes = require('./routes/salary');
 const changelogRoutes = require('./routes/changelog');
 const reportRoutes = require('./routes/reports');
 const statsRoutes = require('./routes/stats');
+const profileRoutes = require('./routes/profile');
+const workHoursRoutes = require('./routes/workHours');
 
 // Initialize express app
 const app = express();
@@ -37,6 +39,8 @@ app.use('/api/salary', salaryRoutes);
 app.use('/api/changelog', changelogRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/work-hours', workHoursRoutes);
 
 // Root route
 app.get('/', (req, res) => {

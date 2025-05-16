@@ -3,11 +3,13 @@ import axios from 'axios';
 import { 
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Button, Alert, CircularProgress, Grid,
-  Card, CardContent, Divider, TablePagination
+  Card, CardContent, Divider, TablePagination, FormControlLabel, Switch,
+  Tooltip, Chip
 } from '@mui/material';
 import {
   LocationOn as LocationIcon,
-  AccessTime as ClockIcon
+  AccessTime as ClockIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -25,6 +27,10 @@ const Attendance = () => {
   // Хуудаслалт
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Add new state for remote check-in
+  const [isRemote, setIsRemote] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   
   // Ирцийн мэдээлэл татах
   useEffect(() => {
@@ -47,6 +53,28 @@ const Attendance = () => {
     };
     
     fetchAttendanceData();
+  }, []);
+  
+  // Add new useEffect to fetch pending approvals
+  useEffect(() => {
+    const fetchPendingApprovals = async () => {
+      try {
+        // Try to get data from API, but have a fallback for when it fails
+        try {
+          const res = await axios.get('/attendance/my-pending');
+          setPendingApprovals(res.data);
+        } catch (err) {
+          console.error('Хүлээгдэж буй ирцийн мэдээлэл татахад алдаа гарлаа:', err);
+          // Use mock data if API fails
+          setPendingApprovals([]);
+        }
+      } catch (err) {
+        console.error('Хүлээгдэж буй ирцийн мэдээлэл боловсруулахад алдаа гарлаа:', err);
+        setPendingApprovals([]);
+      }
+    };
+    
+    fetchPendingApprovals();
   }, []);
   
   // Одоогийн байршлыг авах
@@ -82,27 +110,27 @@ const Attendance = () => {
     try {
       setLoading(true);
       
-      const res = await axios.post('/attendance/check-in', currentLocation);
-      
-      setAttendance({
-        ...res.data,
-        check_in: res.data.checkInTime,
-        check_in_location: `${currentLocation.latitude},${currentLocation.longitude}`
+      const res = await axios.post('/attendance/check-in', {
+        ...currentLocation,
+        isRemote
       });
       
-      // Түүхэнд нэмэх
-      setAttendanceHistory([
-        {
-          id: res.data.attendanceId,
-          check_in: res.data.checkInTime,
-          check_in_location: `${currentLocation.latitude},${currentLocation.longitude}`,
-          user_id: user.id
-        },
-        ...attendanceHistory
-      ]);
+      // Fetch the latest attendance data to ensure we have the correct structure
+      const latestRes = await axios.get('/attendance/latest');
+      setAttendance(latestRes.data);
       
-      // Ирцийн бүртгэлийн дараа байршлыг дахин тохируулах
-      setCurrentLocation(null);
+      // Refresh the attendance history from the server
+      const historyRes = await axios.get('/attendance/me');
+      setAttendanceHistory(historyRes.data);
+      
+      // If remote, refresh pending approvals
+      if (isRemote) {
+        const pendingRes = await axios.get('/attendance/my-pending');
+        setPendingApprovals(pendingRes.data);
+      }
+      
+      // Keep the current location for checkout
+      // setCurrentLocation(null);
       
     } catch (err) {
       console.error('Ирц бүртгэхэд алдаа гарлаа:', err);
@@ -124,29 +152,30 @@ const Attendance = () => {
       
       const res = await axios.post('/attendance/check-out', {
         ...currentLocation,
-        attendanceId: attendance.id || attendance.attendanceId
+        attendanceId: attendance.id || attendance.attendanceId,
+        isRemote
       });
       
       setAttendance({
         ...attendance,
         check_out: res.data.checkOutTime,
-        check_out_location: `${currentLocation.latitude},${currentLocation.longitude}`
+        check_out_location: `${currentLocation.latitude},${currentLocation.longitude}`,
+        is_remote: attendance.is_remote || isRemote
       });
-      
       
       const updatedHistory = attendanceHistory.map(item => {
         if (item.id === (attendance.id || attendance.attendanceId)) {
           return {
             ...item,
             check_out: res.data.checkOutTime,
-            check_out_location: `${currentLocation.latitude},${currentLocation.longitude}`
+            check_out_location: `${currentLocation.latitude},${currentLocation.longitude}`,
+            is_remote: item.is_remote || isRemote
           };
         }
         return item;
       });
       
       setAttendanceHistory(updatedHistory);
-      
       
       setCurrentLocation(null);
       
@@ -191,6 +220,20 @@ const Attendance = () => {
     return 'Дутуу цаг';
   };
   
+  // Add getStatusChip method to display approval status
+  const getStatusChip = (status) => {
+    switch (status) {
+      case 'approved':
+        return <Chip color="success" size="small" label="Зөвшөөрөгдсөн" />;
+      case 'rejected':
+        return <Chip color="error" size="small" label="Татгалзсан" />;
+      case 'pending':
+        return <Chip color="warning" size="small" label="Хүлээгдэж байна" />;
+      default:
+        return null;
+    }
+  };
+  
   if (loading && !attendanceHistory.length) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -217,6 +260,18 @@ const Attendance = () => {
         </Alert>
       )}
       
+      {/* Pending Approvals Section */}
+      {pendingApprovals.length > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2">
+            Танд {pendingApprovals.length} ширхэг хүлээгдэж буй зайнаас ирцийн бүртгэл байна
+          </Typography>
+          <Typography variant="body2">
+            Таны зайнаас бүртгүүлсэн ирцийг менежер баталгаажуулах хүртэл хүлээнэ үү
+          </Typography>
+        </Alert>
+      )}
+      
       {/* Today's Attendance Card */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
@@ -230,6 +285,15 @@ const Attendance = () => {
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body1">
                   <strong>Ирсэн цаг:</strong> {attendance?.check_in ? formatDate(attendance.check_in) : 'Бүртгэгдээгүй'}
+                  {attendance?.is_remote && attendance?.check_in && (
+                    <Chip 
+                      size="small" 
+                      label="Зайнаас" 
+                      color="info" 
+                      sx={{ ml: 1 }}
+                    />
+                  )}
+                  {attendance?.approval_status && attendance?.check_in && getStatusChip(attendance.approval_status)}
                 </Typography>
                 <Typography variant="body1">
                   <strong>Гарсан цаг:</strong> {attendance?.check_out ? formatDate(attendance.check_out) : 'Бүртгэгдээгүй'}
@@ -248,31 +312,64 @@ const Attendance = () => {
                 <Alert severity="info" sx={{ mb: 2 }}>
                   <Typography variant="body2">
                     <LocationIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                    Одоогийн байршил: {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                    Таны одоогийн байршил: {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
                   </Typography>
                 </Alert>
               )}
-            </Grid>
-            
-            <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleCheckIn}
-                disabled={loading || (attendance && !attendance.check_out && attendance.check_in)}
-                sx={{ mr: 2 }}
-              >
-                Ирц бүртгэх
-              </Button>
               
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleCheckOut}
-                disabled={loading || !attendance || !attendance.check_in || attendance.check_out}
-              >
-                Гарах бүртгэл
-              </Button>
+              {/* Remote check-in option */}
+              <FormControlLabel
+                control={
+                  <Switch 
+                    checked={isRemote} 
+                    onChange={(e) => setIsRemote(e.target.checked)} 
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography variant="body2">Зайнаас ажиллаж байна</Typography>
+                    <Tooltip title="Зайнаас ажиллаж байгаа тохиолдолд ирцийн бүртгэл менежерийн зөвшөөрлийг шаардана" arrow>
+                      <InfoIcon fontSize="small" color="info" sx={{ ml: 0.5 }} />
+                    </Tooltip>
+                  </Box>
+                }
+                sx={{ mt: 2, mb: 1 }}
+              />
+              
+              <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleCheckIn}
+                  disabled={loading || (attendance && attendance.check_in && !attendance.check_out)}
+                  startIcon={loading ? <CircularProgress size={20} /> : null}
+                >
+                  Ирц бүртгэх
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={handleCheckOut}
+                  disabled={loading || !attendance || !attendance.check_in || attendance.check_out || !currentLocation}
+                  startIcon={loading ? <CircularProgress size={20} /> : null}
+                >
+                  Гарах бүртгэл
+                </Button>
+                
+                {!currentLocation && (
+                  <Button
+                    variant="text"
+                    color="info"
+                    onClick={getCurrentLocation}
+                    startIcon={<LocationIcon />}
+                    disabled={loading}
+                  >
+                    Байршил тогтоох
+                  </Button>
+                )}
+              </Box>
             </Grid>
           </Grid>
         </CardContent>
@@ -283,44 +380,46 @@ const Attendance = () => {
         Ирцийн түүх
       </Typography>
       
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-        <TableContainer sx={{ maxHeight: 440 }}>
-          <Table stickyHeader aria-label="sticky table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Огноо</TableCell>
-                <TableCell>Ирсэн цаг</TableCell>
-                <TableCell>Гарсан цаг</TableCell>
-                <TableCell>Төлөв</TableCell>
-                <TableCell>Тайлбар</TableCell>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Огноо</TableCell>
+              <TableCell>Ирсэн цаг</TableCell>
+              <TableCell>Гарсан цаг</TableCell>
+              <TableCell>Төлөв</TableCell>
+              <TableCell>Төрөл</TableCell>
+              <TableCell>Байршил</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {attendanceHistory.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((record) => (
+              <TableRow key={record.id}>
+                <TableCell>{record.check_in ? new Date(record.check_in).toLocaleDateString('mn-MN') : ''}</TableCell>
+                <TableCell>{record.check_in ? formatDate(record.check_in) : ''}</TableCell>
+                <TableCell>{record.check_out ? formatDate(record.check_out) : 'Бүртгэгдээгүй'}</TableCell>
+                <TableCell>{getAttendanceStatus(record)}</TableCell>
+                <TableCell>
+                  {record.is_remote ? (
+                    <Chip size="small" label="Зайнаас" color="info" />
+                  ) : (
+                    <Chip size="small" label="Оффис" color="success" />
+                  )}
+                  {record.approval_status && getStatusChip(record.approval_status)}
+                </TableCell>
+                <TableCell>
+                  {record.check_in_location && (
+                    <Tooltip title={record.check_in_location} arrow>
+                      <Button size="small" startIcon={<LocationIcon />} color="info">
+                        Харах
+                      </Button>
+                    </Tooltip>
+                  )}
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {attendanceHistory
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((record) => (
-                  <TableRow hover key={record.id}>
-                    <TableCell>
-                      {record.check_in ? new Date(record.check_in).toLocaleDateString('mn-MN') : ''}
-                    </TableCell>
-                    <TableCell>{record.check_in ? formatDate(record.check_in) : ''}</TableCell>
-                    <TableCell>{record.check_out ? formatDate(record.check_out) : ''}</TableCell>
-                    <TableCell>{getAttendanceStatus(record)}</TableCell>
-                    <TableCell>{record.notes || ''}</TableCell>
-                  </TableRow>
-                ))}
-              
-              {attendanceHistory.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    Ирцийн түүх хоосон байна
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
+            ))}
+          </TableBody>
+        </Table>
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
@@ -329,10 +428,8 @@ const Attendance = () => {
           page={page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Хуудсанд:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
         />
-      </Paper>
+      </TableContainer>
     </Box>
   );
 };

@@ -150,8 +150,8 @@ const Analytics = () => {
       
       <Grid container spacing={3}>
         {/* Хэлтсийн хуваарилалт */}
-        <Grid md={6} xs={12}>
-          <Paper sx={{ p: 2, height: '100%' }}>
+        <Grid item xs={12} sm={12} md={6} lg={6}>
+          <Paper sx={{ p: 2, height: '100%', borderRadius: 0 }}>
             <Typography variant="h6" gutterBottom>
               Хэлтсийн бүтэц
             </Typography>
@@ -181,8 +181,8 @@ const Analytics = () => {
         </Grid>
         
         {/* Ирцийн хуваарилалт */}
-        <Grid md={6} xs={12}>
-          <Paper sx={{ p: 2, height: '100%' }}>
+        <Grid item xs={12} sm={12} md={6} lg={6}>
+          <Paper sx={{ p: 2, height: '100%', borderRadius: 0 }}>
             <Typography variant="h6" gutterBottom>
               Ирцийн тойм
             </Typography>
@@ -205,8 +205,8 @@ const Analytics = () => {
         </Grid>
         
         {/* Гүйцэтгэлийн радар */}
-        <Grid md={6} xs={12}>
-          <Paper sx={{ p: 2, height: '100%' }}>
+        <Grid item xs={12} sm={12} md={6} lg={6}>
+          <Paper sx={{ p: 2, height: '100%', borderRadius: 0 }}>
             <Typography variant="h6" gutterBottom>
               Гүйцэтгэлийн үнэлгээ
             </Typography>
@@ -226,8 +226,8 @@ const Analytics = () => {
         </Grid>
         
         {/* Цалингийн харьцуулалт */}
-        <Grid md={6} xs={12}>
-          <Paper sx={{ p: 2, height: '100%' }}>
+        <Grid item xs={12} sm={12} md={6} lg={6}>
+          <Paper sx={{ p: 2, height: '100%', borderRadius: 0 }}>
             <Typography variant="h6" gutterBottom>
               Цалингийн харьцуулалт
             </Typography>
@@ -250,14 +250,14 @@ const Analytics = () => {
         </Grid>
         
         {/* Гол үзүүлэлтүүдийн картууд */}
-        <Grid xs={12}>
-          <Paper sx={{ p: 2 }}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2, borderRadius: 0 }}>
             <Typography variant="h6" gutterBottom>
               Гол үзүүлэлтүүд
             </Typography>
             <Grid container spacing={2}>
-              <Grid md={3} sm={6} xs={12}>
-                <Card sx={{ bgcolor: '#e3f2fd' }}>
+              <Grid item xs={12} sm={6} md={3} lg={3}>
+                <Card sx={{ bgcolor: '#e3f2fd', borderRadius: 0 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       Нийт ажилтан
@@ -269,8 +269,8 @@ const Analytics = () => {
                 </Card>
               </Grid>
               
-              <Grid md={3} sm={6} xs={12}>
-                <Card sx={{ bgcolor: '#e8f5e9' }}>
+              <Grid item xs={12} sm={6} md={3} lg={3}>
+                <Card sx={{ bgcolor: '#e8f5e9', borderRadius: 0 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       Ирцийн дундаж
@@ -282,8 +282,8 @@ const Analytics = () => {
                 </Card>
               </Grid>
               
-              <Grid md={3} sm={6} xs={12}>
-                <Card sx={{ bgcolor: '#fff3e0' }}>
+              <Grid item xs={12} sm={6} md={3} lg={3}>
+                <Card sx={{ bgcolor: '#fff3e0', borderRadius: 0 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       Дундаж үнэлгээ
@@ -296,8 +296,8 @@ const Analytics = () => {
                 </Card>
               </Grid>
               
-              <Grid md={3} sm={6} xs={12}>
-                <Card sx={{ bgcolor: '#f3e5f5' }}>
+              <Grid item xs={12} sm={6} md={3} lg={3}>
+                <Card sx={{ bgcolor: '#f3e5f5', borderRadius: 0 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       Дундаж цалин

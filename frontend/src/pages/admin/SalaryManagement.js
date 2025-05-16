@@ -261,8 +261,11 @@ const SalaryManagement = () => {
   
   // Format currency
   const formatCurrency = (amount) => {
-    if (amount === undefined || amount === null) return '0 ₮';
-    return parseFloat(amount).toLocaleString('mn-MN') + ' ₮';
+    // Handle null, undefined, or NaN values
+    if (amount === null || amount === undefined || isNaN(parseFloat(amount))) {
+      return '0 ₮';
+    }
+    return new Intl.NumberFormat('mn-MN').format(amount) + ' ₮';
   };
   
   // Handle pagination

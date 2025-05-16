@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Box, Grid, Paper, Typography, Button, Card, CardContent, 
-  CardActions, Divider, CircularProgress, Alert
+  CardActions, Divider, CircularProgress, Alert, FormControlLabel, Switch, Chip
 } from '@mui/material';
 import {
   AccessTime as ClockIcon,
@@ -28,6 +28,7 @@ const Dashboard = () => {
   const [officeLocation, setOfficeLocation] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [isRemoteWork, setIsRemoteWork] = useState(false);
   
   // Хянах самбарын мэдээлэл татах
   useEffect(() => {
@@ -93,13 +94,22 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      const res = await axios.post('/attendance/check-in', currentLocation);
-      
-      setAttendance({
-        ...res.data,
-        check_in: res.data.checkInTime,
-        check_in_location: `${currentLocation.latitude},${currentLocation.longitude}`
+      const res = await axios.post('/attendance/check-in', {
+        ...currentLocation,
+        isRemote: isRemoteWork
       });
+      
+      setAttendance(res.data);
+      
+      // Refresh attendance history to get the latest record
+      const latestAttendanceRes = await axios.get('/attendance/latest');
+      setAttendance(latestAttendanceRes.data);
+      
+      // If remote, refresh pending approvals
+      if (isRemoteWork) {
+        const pendingRes = await axios.get('/attendance/my-pending');
+        setPendingLeaves(pendingRes.data.length);
+      }
       
       // Ирцийн бүртгэлийн дараа байршлыг дахин тохируулах
       setCurrentLocation(null);
@@ -124,7 +134,8 @@ const Dashboard = () => {
       
       const res = await axios.post('/attendance/check-out', {
         ...currentLocation,
-        attendanceId: attendance.id || attendance.attendanceId
+        attendanceId: attendance.id || attendance.attendanceId,
+        isRemote: isRemoteWork
       });
       
       setAttendance({
@@ -133,6 +144,9 @@ const Dashboard = () => {
         check_out_location: `${currentLocation.latitude},${currentLocation.longitude}`
       });
       
+      // After successful check-out, fetch the latest attendance record to update UI
+      const latestAttendanceRes = await axios.get('/attendance/latest');
+      setAttendance(latestAttendanceRes.data);
       
       setCurrentLocation(null);
       
@@ -151,6 +165,16 @@ const Dashboard = () => {
     return date.toLocaleString('mn-MN');
   };
   
+  // Check if attendance is from a previous day
+  const isAttendanceFromPreviousDay = () => {
+    if (!attendance?.check_in) return true;
+    
+    const today = new Date();
+    const checkInDate = new Date(attendance.check_in);
+    
+    return today.toDateString() !== checkInDate.toDateString();
+  };
+  
   if (loading && !attendance) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -166,19 +190,19 @@ const Dashboard = () => {
       </Typography>
       
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       
       {locationError && (
-        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setLocationError(null)}>
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setLocationError(null)}>
           {locationError}
         </Alert>
       )}
       
       {/* Attendance Card */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 0 }}>
         <Typography variant="h6" gutterBottom>
           <ClockIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
           Өнөөдрийн ирц
@@ -194,36 +218,16 @@ const Dashboard = () => {
                 <strong>Гарсан цаг:</strong> {attendance?.check_out ? formatDate(attendance.check_out) : 'Бүртгэгдээгүй'}
               </Typography>
             </Box>
-            
-            {currentLocation && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  <LocationIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                  Одоогийн байршил: {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
-                </Typography>
-              </Alert>
-            )}
           </Grid>
           
           <Grid sx={{ width: { xs: '100%', md: '50%' }, p: 1, textAlign: 'right' }}>
-
             <Button
               variant="contained"
               color="primary"
-              onClick={handleCheckIn}
-              disabled={loading || (attendance && !attendance.check_out && attendance.check_in)}
-              sx={{ mr: 2 }}
+              startIcon={<ClockIcon />}
+              onClick={() => navigate('/dashboard/attendance')}
             >
-              Ирц бүртгэх
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleCheckOut}
-              disabled={loading || !attendance || !attendance.check_in || attendance.check_out}
-            >
-              Гарах бүртгэл
+              Ирц бүртгэлийн хуудас руу
             </Button>
           </Grid>
         </Grid>
@@ -237,7 +241,7 @@ const Dashboard = () => {
       <Grid container spacing={3}>
         {/* Leave Requests */}
         <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
-          <Card>
+          <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 <LeaveIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -262,7 +266,7 @@ const Dashboard = () => {
         
         {/* Performance Reviews */}
         <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
-          <Card>
+          <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 <PerformanceIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -287,7 +291,7 @@ const Dashboard = () => {
         
         {/* Salary Information */}
         <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
-          <Card>
+          <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 <SalaryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -308,7 +312,7 @@ const Dashboard = () => {
         
         {/* Reports */}
         <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
-          <Card>
+          <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 <ChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
