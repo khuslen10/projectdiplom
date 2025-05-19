@@ -5,7 +5,8 @@ import {
   TableHead, TableRow, Button, Alert, CircularProgress, Grid,
   Dialog, DialogActions, DialogContent, DialogTitle, TextField, 
   MenuItem, IconButton, Chip, TablePagination, InputAdornment,
-  Tooltip, Tabs, Tab, FormControl, InputLabel, Select, Stack
+  Tooltip, Tabs, Tab, FormControl, InputLabel, Select, Stack,
+  Link
 } from '@mui/material';
 import {
   Visibility as ViewIcon,
@@ -15,7 +16,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   LocationOn as LocationIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Map as MapIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -825,6 +827,26 @@ const AttendanceManagement = () => {
               </Grid>
               
               <Grid xs={12}>
+                <Box sx={{ my: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Button 
+                    variant="outlined" 
+                    color="primary" 
+                    startIcon={<MapIcon />}
+                    component={Link}
+                    href={`https://maps.google.com/?q=${officeLocation.latitude},${officeLocation.longitude}`}
+                    target="_blank"
+                    fullWidth
+                  >
+                    Газрын зураг дээр харах
+                  </Button>
+                  <Typography variant="body2" color="text.secondary">
+                    Шинэ байршил сонгохдоо Google Maps дээр дарж →
+                    координатыг (lat, lng) хуулан энд буцаж оруулна уу
+                  </Typography>
+                </Box>
+              </Grid>
+              
+              <Grid xs={12}>
                 <TextField
                   fullWidth
                   label="Зөвшөөрөгдөх радиус (метр)"
@@ -833,8 +855,8 @@ const AttendanceManagement = () => {
                   value={officeLocation.allowedRadius}
                   onChange={handleLocationChange}
                   InputLabelProps={{ shrink: true }}
-                  inputProps={{ step: 1, min: 10, max: 1000 }}
-                  helperText="Оффисоос хэр хол зайд ирцийг бүртгэх боломжтой байхыг заана (10-1000 метр)"
+                  inputProps={{ step: 100, min: 10, max: 5000 }}
+                  helperText="Оффисоос хэр хол зайд ирцийг бүртгэх боломжтой байхыг заана (10-5000 метр)"
                 />
               </Grid>
             </Grid>

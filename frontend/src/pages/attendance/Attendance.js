@@ -303,7 +303,7 @@ const Attendance = () => {
                   <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
                     <LocationIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
                     Оффисын байршил: {officeLocation.latitude.toFixed(6)}, {officeLocation.longitude.toFixed(6)}
-                    (Зөвшөөрөгдөх зай: {officeLocation.allowedRadius}м)
+                    (Зөвшөөрөгдөх зай: <span style={{ fontWeight: 'bold', color: 'green' }}>{officeLocation.allowedRadius}м</span>)
                   </Typography>
                 )}
               </Box>

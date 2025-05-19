@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Changelog = require('../models/Changelog');
+const Salary = require('../models/Salary');
 require('dotenv').config();
 
 // Шинэ хэрэглэгч бүртгэх
@@ -30,6 +31,37 @@ exports.register = async (req, res) => {
       phone,
       hire_date
     });
+
+    // Create default salary records for the new user
+    // Current salary (using a fixed future date - May 16, 2025)
+    const currentSalary = {
+      user_id: userId,
+      base_salary: 1500000, // Default base salary 1,500,000 MNT
+      bonus: 200000,        // Default bonus 200,000 MNT
+      deductions: 50000,    // Default deductions 50,000 MNT
+      effective_date: '2025-05-16' // Fixed date format: YYYY-MM-DD
+    };
+    await Salary.create(currentSalary);
+    
+    // Historical salary record 1 (February 16, 2025)
+    const salaryThreeMonthsAgo = {
+      user_id: userId,
+      base_salary: 1400000,
+      bonus: 150000,
+      deductions: 45000,
+      effective_date: '2025-02-16' // Fixed date format: YYYY-MM-DD
+    };
+    await Salary.create(salaryThreeMonthsAgo);
+    
+    // Historical salary record 2 (November 16, 2024)
+    const salarySixMonthsAgo = {
+      user_id: userId,
+      base_salary: 1300000,
+      bonus: 100000,
+      deductions: 40000,
+      effective_date: '2024-11-16' // Fixed date format: YYYY-MM-DD
+    };
+    await Salary.create(salarySixMonthsAgo);
 
     // Өөрчлөлтийн түүхэнд бүртгэх
     await Changelog.create({

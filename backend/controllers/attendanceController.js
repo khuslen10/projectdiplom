@@ -47,7 +47,7 @@ exports.checkIn = async (req, res) => {
       
       if (distance > allowedRadius) {
         return res.status(400).json({ 
-          message: `Та оффисын байршлаас хэт хол байна (${Math.round(distance)}м). Зөвшөөрөгдөх зай: ${allowedRadius}м. Хэрэв та зайнаас ажиллаж байгаа бол "Зайнаас ирц бүртгэх" сонголтыг идэвхжүүлнэ үү.`,
+          message: `Та оффисын байршлаас ${Math.round(distance)}м зайд байна. Зөвшөөрөгдөх зай: ${allowedRadius}м. Хэрэв та зайнаас ажиллаж байгаа бол "Зайнаас ирц бүртгэх" сонголтыг идэвхжүүлнэ үү.`,
           distance: Math.round(distance),
           allowedRadius
         });
@@ -101,7 +101,7 @@ exports.checkOut = async (req, res) => {
       
       if (distance > allowedRadius) {
         return res.status(400).json({ 
-          message: `Та оффисын байршлаас хэт хол байна (${Math.round(distance)}м). Зөвшөөрөгдөх зай: ${allowedRadius}м. Хэрэв та зайнаас ажиллаж байгаа бол "Зайнаас гарах бүртгэл" сонголтыг идэвхжүүлнэ үү.`,
+          message: `Та оффисын байршлаас ${Math.round(distance)}м зайд байна. Зөвшөөрөгдөх зай: ${allowedRadius}м. Хэрэв та зайнаас ажиллаж байгаа бол "Зайнаас гарах бүртгэл" сонголтыг идэвхжүүлнэ үү.`,
           distance: Math.round(distance),
           allowedRadius
         });
@@ -315,11 +315,15 @@ exports.updateOfficeLocation = async (req, res) => {
       });
     }
 
+    // Only validate that radius is positive
     if (numAllowedRadius <= 0) {
       return res.status(400).json({ 
         message: 'Зөвшөөрөгдөх радиус нь 0-ээс их байх ёстой'        
       });
     }
+    
+    // Removed upper limit validation on radius to allow any positive value
+    // This makes it easier for users to register attendance from various locations
     
     try {
       // .env файлыг шинэчлэх функц

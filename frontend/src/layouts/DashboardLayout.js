@@ -423,13 +423,14 @@ const DashboardLayout = () => {
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          p: 3,
+          p: {xs: 1, sm: 2},
           width: { sm: `calc(100% - ${open ? drawerWidth : 72}px)` },
           transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
           overflow: 'hidden',
+          maxWidth: '100%'
         }}
       >
         <Toolbar />
@@ -442,6 +443,8 @@ const DashboardLayout = () => {
             transition: 'all 0.3s ease',
             height: 'calc(100vh - 88px)',
             overflowY: 'auto',
+            width: '100%',
+            maxWidth: '100%',
             '&::-webkit-scrollbar': {
               width: '8px',
             },

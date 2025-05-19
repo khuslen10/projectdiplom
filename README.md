@@ -36,3 +36,5 @@ The frontend is a React application. Key components and pages include:
 "# hmm" 
 "# hmm" 
 "# projectdiplom" 
+"# margaash" 
+"# margaash" 

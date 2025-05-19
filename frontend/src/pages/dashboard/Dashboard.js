@@ -184,25 +184,25 @@ const Dashboard = () => {
   }
   
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: '100%', padding: 0 }}>
       <Typography variant="h4" gutterBottom>
         Сайн байна уу, {user?.name}!
       </Typography>
       
       {error && (
-        <Alert severity="error" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 0, width: '100%' }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       
       {locationError && (
-        <Alert severity="warning" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setLocationError(null)}>
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: 0, width: '100%' }} onClose={() => setLocationError(null)}>
           {locationError}
         </Alert>
       )}
       
       {/* Attendance Card */}
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 0 }}>
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 0, width: '100%' }}>
         <Typography variant="h6" gutterBottom>
           <ClockIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
           Өнөөдрийн ирц
@@ -238,9 +238,9 @@ const Dashboard = () => {
         Хурдан хандалт
       </Typography>
       
-      <Grid container spacing={3}>
+      <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
         {/* Leave Requests */}
-        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
+        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1 }}>
           <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -265,7 +265,7 @@ const Dashboard = () => {
         </Grid>
         
         {/* Performance Reviews */}
-        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
+        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1 }}>
           <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -290,7 +290,7 @@ const Dashboard = () => {
         </Grid>
         
         {/* Salary Information */}
-        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
+        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1 }}>
           <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -311,7 +311,7 @@ const Dashboard = () => {
         </Grid>
         
         {/* Reports */}
-        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1.5 }}>
+        <Grid sx={{ width: { xs: '100%', sm: '50%', md: '25%' }, p: 1 }}>
           <Card sx={{ borderRadius: 0 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -334,7 +334,7 @@ const Dashboard = () => {
       
       {/* Analytics Section - Only visible to admin and manager */}
       {user && (user.role === 'admin' || user.role === 'manager') && (
-        <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: 3, width: '100%' }}>
           <Analytics />
         </Box>
       )}

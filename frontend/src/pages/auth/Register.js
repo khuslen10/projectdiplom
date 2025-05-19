@@ -3,7 +3,8 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { 
   TextField, Button, Box, Typography, Alert, 
   InputAdornment, IconButton, CircularProgress,
-  Stack, LinearProgress, List, ListItem, ListItemIcon, ListItemText
+  Stack, LinearProgress, List, ListItem, ListItemIcon, ListItemText,
+  Select, MenuItem, FormControl, FormHelperText
 } from '@mui/material';
 import { 
   Visibility, VisibilityOff, CheckCircle, FiberManualRecord, ArrowForward
@@ -18,7 +19,11 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    position: '',
+    department: '',
+    phone: '',
+    hire_date: new Date().toISOString().split('T')[0]
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +35,36 @@ const Register = () => {
     hasSpecialChar: false
   });
   
-  const { name, email, password, confirmPassword } = formData;
+  const { name, email, password, confirmPassword, position, department, phone, hire_date } = formData;
+  
+  // Department options
+  const departmentOptions = [
+    'Хүний нөөц',
+    'Санхүү',
+    'Маркетинг',
+    'Мэдээллийн технологи',
+    'Үйлдвэрлэл',
+    'Борлуулалт',
+    'Захиргаа',
+    'Судалгаа хөгжүүлэлт',
+    'Бусад'
+  ];
+  
+  // Position options
+  const positionOptions = [
+    'Захирал',
+    'Менежер',
+    'Ахлах мэргэжилтэн',
+    'Мэргэжилтэн',
+    'Програмист',
+    'Дизайнер',
+    'Нягтлан бодогч',
+    'Маркетингийн менежер',
+    'Борлуулалтын мэргэжилтэн',
+    'Админ',
+    'Туслах ажилтан',
+    'Бусад'
+  ];
   
   useEffect(() => {
     if (password) {
@@ -69,10 +103,21 @@ const Register = () => {
   }, [password, confirmPassword]);
   
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    // Special handling for phone number to only allow digits
+    if (name === 'phone') {
+      const onlyNums = value.replace(/[^0-9]/g, '');
+      if (onlyNums.length <= 8) { // Max 8 digits for Mongolian phone numbers
+        setFormData({ ...formData, [name]: onlyNums });
+      }
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+    
     // Clear error when typing
-    if (formErrors[e.target.name]) {
-      setFormErrors({ ...formErrors, [e.target.name]: '' });
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: '' });
     }
   };
   
@@ -99,6 +144,21 @@ const Register = () => {
       errors.confirmPassword = 'Нууц үг таарахгүй байна';
     }
     
+    if (!position) {
+      errors.position = 'Албан тушаал оруулна уу';
+    }
+    if (!department) {
+      errors.department = 'Хэлтэс оруулна уу';
+    }
+    if (!phone) {
+      errors.phone = 'Утасны дугаар оруулна уу';
+    } else if (!/^\d{8}$/.test(phone)) {
+      errors.phone = 'Утасны дугаар буруу байна (8 оронтой тоо байх ёстой)';
+    }
+    if (!hire_date) {
+      errors.hire_date = 'Ажилд орсон огноо оруулна уу';
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -114,7 +174,11 @@ const Register = () => {
       name,
       email,
       password,
-      role: 'employee' // Default role for self-registration
+      role: 'employee',
+      position,
+      department,
+      phone,
+      hire_date
     };
     
     const result = await register(userData);
@@ -333,6 +397,141 @@ const Register = () => {
                         <CheckCircle color="success" fontSize="small" />
                       </InputAdornment>
                     ) : null
+                  }}
+                />
+              </Box>
+              
+              <Box>
+                <Typography variant="body2" mb={0.5} color="text.secondary">
+                  Албан тушаал
+                </Typography>
+                <FormControl 
+                  fullWidth 
+                  error={!!formErrors.position}
+                  size="small"
+                  disabled={loading}
+                >
+                  <Select
+                    value={position}
+                    name="position"
+                    onChange={handleChange}
+                    displayEmpty
+                    inputProps={{ 'aria-label': 'Албан тушаал' }}
+                    sx={{ 
+                      borderRadius: 0,
+                      height: 40
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Албан тушаал сонгоно уу</em>
+                    </MenuItem>
+                    {positionOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {formErrors.position && (
+                    <FormHelperText>{formErrors.position}</FormHelperText>
+                  )}
+                </FormControl>
+              </Box>
+              
+              <Box>
+                <Typography variant="body2" mb={0.5} color="text.secondary">
+                  Хэлтэс
+                </Typography>
+                <FormControl 
+                  fullWidth 
+                  error={!!formErrors.department}
+                  size="small"
+                  disabled={loading}
+                >
+                  <Select
+                    value={department}
+                    name="department"
+                    onChange={handleChange}
+                    displayEmpty
+                    inputProps={{ 'aria-label': 'Хэлтэс' }}
+                    sx={{ 
+                      borderRadius: 0,
+                      height: 40
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Хэлтэс сонгоно уу</em>
+                    </MenuItem>
+                    {departmentOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {formErrors.department && (
+                    <FormHelperText>{formErrors.department}</FormHelperText>
+                  )}
+                </FormControl>
+              </Box>
+              
+              <Box>
+                <Typography variant="body2" mb={0.5} color="text.secondary">
+                  Утасны дугаар
+                </Typography>
+                <TextField
+                  required
+                  fullWidth
+                  name="phone"
+                  placeholder="00000000"
+                  value={phone}
+                  onChange={handleChange}
+                  error={!!formErrors.phone}
+                  helperText={formErrors.phone || 'Зөвхөн 8 оронтой тоо'}
+                  disabled={loading}
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    sx: { 
+                      borderRadius: 0,
+                      height: 40
+                    },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        +976
+                      </InputAdornment>
+                    ),
+                    endAdornment: phone && phone.length === 8 ? (
+                      <InputAdornment position="end">
+                        <CheckCircle color="success" fontSize="small" />
+                      </InputAdornment>
+                    ) : null
+                  }}
+                  inputProps={{ 
+                    maxLength: 8,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*'
+                  }}
+                />
+              </Box>
+              
+              <Box>
+                <Typography variant="body2" mb={0.5} color="text.secondary">
+                  Ажилд орсон огноо
+                </Typography>
+                <TextField
+                  required
+                  fullWidth
+                  name="hire_date"
+                  type="date"
+                  value={hire_date}
+                  onChange={handleChange}
+                  error={!!formErrors.hire_date}
+                  helperText={formErrors.hire_date}
+                  disabled={loading}
+                  variant="outlined"
+                  size="small"
+                  sx={{ borderRadius: 0 }}
+                  InputLabelProps={{
+                    shrink: true,
                   }}
                 />
               </Box>
